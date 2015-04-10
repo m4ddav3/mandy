@@ -4,14 +4,14 @@ use strict; use warnings;
 use Data::Dumper;
 use GD;
 
-my $scale = 1/100000;
-my ($y_size, $x_size) = (768, 1024);
-#my ($y_size, $x_size) = (240, 320);
-#my ($x_origin, $y_origin) = (0, 0);
-my ($x_origin, $y_origin) = (-0.7453,0.1127);
+my $scale = 1/300;
+#my ($y_size, $x_size) = (2000, 3000);
+#my ($y_size, $x_size) = (60, 90);
+my ($y_size, $x_size) = (90, 160);
+my ($x_origin, $y_origin) = (0.25, 0);
+#my ($x_origin, $y_origin) = (-0.7453,0.1127);
 
-my $max_iters = (256) - 1;
-my $iter_div  = int(($max_iters + 255) / 255);
+my $max_iters = 65535;#(65535) - 1;
 my $limit     = 4;
 
 sub val_to_rgb {
@@ -22,6 +22,8 @@ sub val_to_rgb {
     my $g = $val & 0xff;
     $val = $val >> 8;
     my $r = $val & 0xff;
+
+    print sprintf("%s -> (%s, %s, %s)\n", $_[0], $r, $g, $b);
 
     return ($r, $g, $b);
 }
@@ -53,11 +55,12 @@ print sprintf("X: %s to %s = %s to %s\n", 0, $x_size, ($min_x + 0) * $scale, ($m
 print sprintf("Y: %s to %s = %s to %s\n", 0, $y_size, ($min_y + 0) * $scale, ($min_y + $y_size) * $scale);
 
 #exit;
-my $image = GD::Image->new($x_size, $y_size);
+my $image = GD::Image->new($x_size, $y_size, 1);
 
-my $colours = {};
-$colours->{0} = $image->colorAllocate(0,0,0);
-$colours->{16777215} = $image->colorAllocate(255,255,255);
+my $colours = {
+    0        => $image->colorAllocate(0,0,0),
+    16777215 => $image->colorAllocate(255,255,255),
+};
 
 my ($x1, $x2, $y1, $y2) = (0, 0, 0, 0);
 my $iters = 0;
@@ -67,7 +70,7 @@ my ($x_pos, $y_pos) = (0, 0);
 # This draws lines in an interlaced fashion, used when I want to see the
 # rough target area
 my @yvals = ();
-if (0) {
+#if (0) {
     my $vals = {};
     map $vals->{$_}++, (0..$y_size);
 
@@ -80,11 +83,13 @@ if (0) {
         push @yvals,  @grepped;
     }
 
-    #push @yvals, sort { $a <=> $b } keys %$vals;
-}
+    push @yvals, sort { $a <=> $b } keys %$vals;
+#}
 
-#for my $y (@yvals) {
-for my $y (0..$y_size) {
+my $seen = {};
+my $last_time = time;
+for my $y (@yvals) {
+#for my $y (0..$y_size) {
     for my $x (0..$x_size) {
         $x_pos = ($min_x + $x) * $scale;
         $y_pos = ($min_y + $y) * $scale;
@@ -109,9 +114,6 @@ for my $y (0..$y_size) {
             $image->setPixel($x, $y, 0);
         }
         else {
-            #$iters = int(($iters/$iter_div));
-            #$iters += 16;
-            #print "Iters = $iters\n";
             #my ($r, $g, $b) = val_to_rgb(scale_int($iters, 0, $max_iters, 0, 16777215));
             if ($max_iters > 16777215) {
                 $iters = scale_int($iters, 0, $max_iters, 0, 16777215);
@@ -122,10 +124,14 @@ for my $y (0..$y_size) {
         }
 
     }
-    #open (my $fh, '>', 'mandy.png');
-    #binmode($fh);
-    #print $fh $image->png;
-    #close $fh;
+
+    if (time - $last_time > 10) {
+        $last_time = time;
+        open (my $fh, '>', 'mandy3.png');
+        binmode($fh);
+        print $fh $image->png;
+        close $fh;
+    }
 }
 
 my $white = $colours->{16777215};
@@ -138,7 +144,7 @@ for my $p (-10..10) {
 }
 
 print Dumper $colours;
-open (my $fh, '>', 'mandy.png');
+open (my $fh, '>', 'mandy3.png');
 binmode($fh);
 print $fh $image->png;
 close $fh;
