@@ -1,0 +1,2 @@
+# mandy
+Mandlebrot exploration
